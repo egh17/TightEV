@@ -1,0 +1,7 @@
+/.pytest_cache
+/.vscode
+/evxtb.egg-info
+/handle_test.vasp
+/temp
+/temp.vasp
+/xtbrestart
