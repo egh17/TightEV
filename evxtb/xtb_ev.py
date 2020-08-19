@@ -128,7 +128,6 @@ def ev_bulk(volumes, energies, plot_name):
         B (float): The calculated bulk modulus. 
 
     """
-    print(Hartree)
     volumes = np.array(volumes)
     energies = np.array(energies) * Hartree/eV
     eos = EquationOfState(volumes, energies, eos="murnaghan")
