@@ -154,3 +154,5 @@ dmypy.json
 
 ### Miscellaneous files ###
 misc/*
+# xtb restart file
+xtbrestart
