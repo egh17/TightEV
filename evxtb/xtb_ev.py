@@ -1,8 +1,8 @@
 import re
 import subprocess
 
-from tempfile import NamedTemporaryFile
-from pathlib import Path
+from ase.eos import EquationOfState
+from ase.units import kJ, Hartree, eV
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -21,16 +21,6 @@ def interpret_xtb(xtb_output):
     match = re.search(pattern, xtb_output)
 
     return float(match.group(1))
-
-
-def read_vasp(fname):
-    with open(fname, "r") as f:
-        buffer = f.read()
-
-    lines = buffer.split("\n")
-    elems = lines[2:5]
-    rows = [[float(num) for num in line.split()] for line in elems]
-    return np.array(rows)
 
 
 def resize_lat(array, scale):
@@ -70,12 +60,12 @@ def format_array(array):
 
 def run_xtb(fname):
     """Run GFN0 xTB with given file.
-    
+
     Args:
         fname (str): The input atomic coordinate file.
 
     Returns:
-        xtb results (str): The xtb code output. 
+        xtb results (str): The xtb code output.
 
     """
     res = subprocess.run(["xtb", "--gfn", "0", fname], capture_output=True, text=True)
@@ -105,9 +95,9 @@ def xtbev(fname, sfs):
         fname (str): The input atomic coordinate file.
         sfs (list of float): The scaling factors that will be applied to the unit cell volume.
 
-    Reurns:
-        volumes (list of float): The volumes correlated to the energies calculated
-        energies (list of float): The energies the cell calculated by gfn0 xtb
+    Returns:
+        volumes (list of float): The volumes correlated to the energies calculated.
+        energies (list of float): The energies the cell calculated by gfn0 xtb.
 
     """
     vasp_handler = VaspHandler(fname)
@@ -122,6 +112,33 @@ def xtbev(fname, sfs):
         volumes.append(unit_vol(vasp_handler.lat_params) * sf)
 
     return volumes, energies
+
+
+def ev_bulk(volumes, energies, plot_name):
+    """Plots volume energy curve and calculates bulk modulus
+
+    Args:
+        volumes (list of float): The volumes correlated to the energies calculated.
+        energies (list of float): The energies the cell calculated by gfn0 xtb.
+        plot_name (str): The file name the plot is saved to. 
+
+    Returns:
+        v0 (float): The volume of minimum energy.
+        e0 (float): The fitted minimum energy of the V/E curve.
+        B (float): The calculated bulk modulus. 
+
+    """
+    print(Hartree)
+    volumes = np.array(volumes)
+    energies = np.array(energies) * Hartree/eV
+    eos = EquationOfState(volumes, energies, eos="murnaghan")
+    v0, e0, B = eos.fit()
+    print(B / kJ * 1.0e24, 'GPa')  # Converts into GPa
+    ax = eos.plot()
+    fig = plt.gcf()
+    fig.set_size_inches(8, 5)
+    fig.savefig(plot_name)
+    return v0, e0, B
 
 
 class VaspHandler:
@@ -174,14 +191,3 @@ class VaspHandler:
 
         with open(fname, "w") as f:
             f.write(buffer)
-
-
-if __name__ == "__main__":
-    TO_READ = str(Path(__file__).parent.parent / "data" / "Rutile.vasp")
-    sfs = np.linspace(0.5, 1.5, 15).tolist()
-    V, E = xtbev(TO_READ, sfs)
-    plt.plot(V, E)
-    plt.xlabel("Volume (A^3)")
-    plt.ylabel("Energy (Eh)")
-    plt.title("Rutile EV")
-    plt.savefig("Rutile_EV.png")
