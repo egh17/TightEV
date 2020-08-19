@@ -3,7 +3,7 @@ import numpy as np
 import pytest
 from scipy.spatial.transform import Rotation as R
 
-import evxtb.xtb_ana as evxtb
+import evxtb.xtb_ev as evxtb
 
 
 def test_scale():
