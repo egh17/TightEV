@@ -71,6 +71,15 @@ def run_xtb(fname):
     res = subprocess.run(["xtb", "--gfn", "0", fname], capture_output=True, text=True)
     return res.stdout
 
+def run_xtb_opt(fname):
+    """Run GFN0 xTB with geometry optimization with to produce "xtbopt.vasp" file and move it to /data.
+
+    Args:
+        fname (str): The input atomic coordinate file.
+    """
+    subprocess.run(["xtb", "--gfn", "0", fname, "-o", "--cycles", "1000"], capture_output=True, text=True)
+    #subprocess.run(["mv", "xtbopt.vasp", "./evxtb"], capture_output=True, text=True)
+
 
 def unit_vol(lat_params):
     """Calculate volume of unit cell from lattice parameter matrix.
@@ -88,6 +97,23 @@ def unit_vol(lat_params):
     return np.dot(np.cross(a, b), c)
 
 
+def find_repeat_unit(fname):
+    """Finds the number of stiochiometric units in the cell.
+
+    Args: 
+        fname (str): The vasp coordinate file name.
+
+    Returns:
+        rnum (int): The number of repeat units in the cell.
+
+    """
+    vasp_handler = VaspHandler(fname)
+
+    rnum = np.gcd.reduce(vasp_handler.read_vasp_repeats())
+
+    return rnum
+
+
 def xtbev(fname, sfs):
     """Calculate multiple total energies from differently scaled unit cells.
 
@@ -97,10 +123,12 @@ def xtbev(fname, sfs):
 
     Returns:
         volumes (list of float): The volumes correlated to the energies calculated.
-        energies (list of float): The energies the cell calculated by gfn0 xtb.
+        energies (list of float): The energies the cell calculated by gfn0 xtb then divided by number of repeat chemical units.
 
     """
     vasp_handler = VaspHandler(fname)
+    rnum = find_repeat_unit(fname)
+    print("Number of stoichiometric units = ", rnum)
 
     energies = []
     volumes = []
@@ -108,14 +136,45 @@ def xtbev(fname, sfs):
         fname = "temp.vasp"
         vasp_handler.write_vasp(sf, fname)
 
-        energies.append(interpret_xtb(run_xtb(fname)))
+        energies.append(interpret_xtb(run_xtb(fname))/rnum)
+        volumes.append(unit_vol(vasp_handler.lat_params) * sf)
+
+    return volumes, energies
+
+
+def xtbev_opt(fname, sfs):
+    """Calculate multiple total energies from differently scaled unit cells.
+
+    Args:
+        fname (str): The input atomic coordinate file.
+        sfs (list of float): The scaling factors that will be applied to the unit cell volume.
+
+    Returns:
+        volumes (list of float): The volumes correlated to the energies calculated.
+        energies (list of float): The energies the cell calculated by gfn0 xtb then divided by number of repeat chemical units.
+
+    """
+    run_xtb_opt(fname)
+    fname = "xtbopt.vasp"
+
+    vasp_handler = VaspHandler(fname)
+    rnum = find_repeat_unit(fname)
+    print("Number of stoichiometric units = ", rnum)
+
+    energies = []
+    volumes = []
+    for sf in sfs:
+        fname = "temp.vasp"
+        vasp_handler.write_vasp(sf, fname)
+
+        energies.append(interpret_xtb(run_xtb(fname))/rnum)
         volumes.append(unit_vol(vasp_handler.lat_params) * sf)
 
     return volumes, energies
 
 
 def ev_bulk(volumes, energies, plot_name):
-    """Plots volume energy curve and calculates bulk modulus
+    """Plot volume energy curve and calculates bulk modulus
 
     Args:
         volumes (list of float): The volumes correlated to the energies calculated.
@@ -156,9 +215,9 @@ class VaspHandler:
     def __init__(self, fname):
         self.fname = fname
 
-        self.lat_params, self.template = self.read_vasp()
+        self.lat_params, self.template = self.read_vasp_lat()
 
-    def read_vasp(self):
+    def read_vasp_lat(self):
         """Read the class's VASP file and get the lattice parameter."""
         with open(self.fname, "r") as f:
             buffer = f.read()
@@ -175,13 +234,27 @@ class VaspHandler:
         template = "\n".join(rest)
 
         return lat_params, template
+    
+    def read_vasp_repeats(self):
+        """Read the class's VASP file and get the numbers of atoms in the cell."""
+        with open(self.fname, "r") as f:
+            buffer = f.read()
+        
+        lines = buffer.split("\n")
+
+        elem = lines[6]
+        row = [int(num) for num in elem.split()]
+        chem_ints = np.array(row)
+
+        return chem_ints
+
 
     def write_vasp(self, sf, fname):
         """Write to a VASP file with a scaled lattice parameter.
 
         Args:
             sf (float): The scaling factor.
-            fname (str): The file to write to.
+            fname (str): The new file to write to.
 
         """
         scaled = resize_lat(self.lat_params, sf)
