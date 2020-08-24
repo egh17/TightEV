@@ -156,3 +156,7 @@ dmypy.json
 misc/*
 # xtb restart file
 xtbrestart
+#temp vasp file
+temp.vasp
+#opimsation file
+xtbopt.vasp
