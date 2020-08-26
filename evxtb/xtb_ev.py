@@ -1,10 +1,25 @@
+import os
 import re
 import subprocess
+from contextlib import contextmanager
+from pathlib import Path
 
 from ase.eos import EquationOfState
 from ase.units import kJ, Hartree, eV
 import matplotlib.pyplot as plt
 import numpy as np
+
+
+@contextmanager
+def tempfile(fname: str = "temp"):
+    """Create a temporary file that is deleted on return."""
+    fpath = Path(fname)
+    with fpath.open("w"):
+        pass
+    try:
+        yield Path(fname)
+    finally:
+        os.remove(fpath)
 
 
 def interpret_xtb(xtb_output):
@@ -105,11 +120,11 @@ def xtbev(fname, sfs):
     energies = []
     volumes = []
     for sf in sfs:
-        fname = "temp.vasp"
-        vasp_handler.write_vasp(sf, fname)
+        with tempfile("temp.vasp") as temp:
+            vasp_handler.write_vasp(sf, temp)
 
-        energies.append(interpret_xtb(run_xtb(fname)))
-        volumes.append(unit_vol(vasp_handler.lat_params) * sf)
+            energies.append(interpret_xtb(run_xtb(str(temp))))
+            volumes.append(unit_vol(vasp_handler.lat_params) * sf)
 
     return volumes, energies
 
@@ -129,10 +144,10 @@ def ev_bulk(volumes, energies, plot_name):
 
     """
     volumes = np.array(volumes)
-    energies = np.array(energies) * Hartree/eV
+    energies = np.array(energies) * Hartree / eV
     eos = EquationOfState(volumes, energies, eos="murnaghan")
     v0, e0, B = eos.fit()
-    print(B / kJ * 1.0e24, 'GPa')  # Converts into GPa
+    print(B / kJ * 1.0e24, "GPa")  # Converts into GPa
     ax = eos.plot()
     fig = plt.gcf()
     fig.set_size_inches(8, 5)
