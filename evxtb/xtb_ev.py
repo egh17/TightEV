@@ -3,6 +3,7 @@ import re
 import subprocess
 from contextlib import contextmanager
 from pathlib import Path
+from typing import Generator
 
 from ase.eos import EquationOfState
 from ase.units import kJ, Hartree, eV
@@ -11,7 +12,7 @@ import numpy as np
 
 
 @contextmanager
-def tempfile(fname: str = "temp"):
+def tempfile(fname: str = "temp") -> Generator[Path, None, None]:
     """Create a temporary file that is deleted on return.
 
     Args:
