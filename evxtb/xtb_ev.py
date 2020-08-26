@@ -12,7 +12,12 @@ import numpy as np
 
 @contextmanager
 def tempfile(fname: str = "temp"):
-    """Create a temporary file that is deleted on return."""
+    """Create a temporary file that is deleted on return.
+
+    Args:
+        fname: The name of the file to create.
+
+    """
     fpath = Path(fname)
     with fpath.open("w"):
         pass
