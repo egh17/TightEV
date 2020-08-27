@@ -158,5 +158,6 @@ misc/*
 xtbrestart
 #temp vasp file
 temp.vasp
-#opimsation file
+#opimsation files
 xtbopt.vasp
+.xtboptok
