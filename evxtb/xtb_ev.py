@@ -1,10 +1,31 @@
+import os
 import re
 import subprocess
+from contextlib import contextmanager
+from pathlib import Path
+from typing import Generator
 
 from ase.eos import EquationOfState
 from ase.units import kJ, Hartree, eV
 import matplotlib.pyplot as plt
 import numpy as np
+
+
+@contextmanager
+def tempfile(fname: str = "temp") -> Generator[Path, None, None]:
+    """Create a temporary file that is deleted on return.
+
+    Args:
+        fname: The name of the file to create.
+
+    """
+    fpath = Path(fname)
+    with fpath.open("w"):
+        pass
+    try:
+        yield Path(fname)
+    finally:
+        os.remove(fpath)
 
 
 def interpret_xtb(xtb_output):
@@ -71,14 +92,19 @@ def run_xtb(fname):
     res = subprocess.run(["xtb", "--gfn", "0", fname], capture_output=True, text=True)
     return res.stdout
 
+
 def run_xtb_opt(fname):
     """Run GFN0 xTB with geometry optimization with to produce "xtbopt.vasp" file and move it to /data.
 
     Args:
         fname (str): The input atomic coordinate file.
     """
-    subprocess.run(["xtb", "--gfn", "0", fname, "-o", "--cycles", "1000"], capture_output=True, text=True)
-    #subprocess.run(["mv", "xtbopt.vasp", "./evxtb"], capture_output=True, text=True)
+    subprocess.run(
+        ["xtb", "--gfn", "0", fname, "-o", "--cycles", "1000"],
+        capture_output=True,
+        text=True,
+    )
+    # subprocess.run(["mv", "xtbopt.vasp", "./evxtb"], capture_output=True, text=True)
 
 
 def unit_vol(lat_params):
@@ -136,7 +162,7 @@ def xtbev(fname, sfs):
         fname = "temp.vasp"
         vasp_handler.write_vasp(sf, fname)
 
-        energies.append(interpret_xtb(run_xtb(fname))/rnum)
+        energies.append(interpret_xtb(run_xtb(fname)) / rnum)
         volumes.append(unit_vol(vasp_handler.lat_params) * sf)
 
     return volumes, energies
@@ -164,11 +190,11 @@ def xtbev_opt(fname, sfs):
     energies = []
     volumes = []
     for sf in sfs:
-        fname = "temp.vasp"
-        vasp_handler.write_vasp(sf, fname)
+        with tempfile("temp.vasp") as temp:
+            vasp_handler.write_vasp(sf, temp)
 
-        energies.append(interpret_xtb(run_xtb(fname))/rnum)
-        volumes.append(unit_vol(vasp_handler.lat_params) * sf)
+            energies.append(interpret_xtb(run_xtb(str(temp))) / rnum)
+            volumes.append(unit_vol(vasp_handler.lat_params) * sf)
 
     return volumes, energies
 
@@ -188,10 +214,10 @@ def ev_bulk(volumes, energies, plot_name):
 
     """
     volumes = np.array(volumes)
-    energies = np.array(energies) * Hartree/eV
+    energies = np.array(energies) * Hartree / eV
     eos = EquationOfState(volumes, energies, eos="murnaghan")
     v0, e0, B = eos.fit()
-    print(B / kJ * 1.0e24, 'GPa')  # Converts into GPa
+    print(B / kJ * 1.0e24, "GPa")  # Converts into GPa
     ax = eos.plot()
     fig = plt.gcf()
     fig.set_size_inches(8, 5)
@@ -234,12 +260,12 @@ class VaspHandler:
         template = "\n".join(rest)
 
         return lat_params, template
-    
+
     def read_vasp_repeats(self):
         """Read the class's VASP file and get the numbers of atoms in the cell."""
         with open(self.fname, "r") as f:
             buffer = f.read()
-        
+
         lines = buffer.split("\n")
 
         elem = lines[6]
@@ -247,7 +273,6 @@ class VaspHandler:
         chem_ints = np.array(row)
 
         return chem_ints
-
 
     def write_vasp(self, sf, fname):
         """Write to a VASP file with a scaled lattice parameter.
