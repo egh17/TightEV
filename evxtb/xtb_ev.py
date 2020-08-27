@@ -70,6 +70,7 @@ def run_xtb(fname):
     """
     res = subprocess.run(["xtb", "--gfn", "0", fname], capture_output=True, text=True)
     return res.stdout
+    
 
 def run_xtb_opt(fname):
     """Run GFN0 xTB with geometry optimization with to produce "xtbopt.vasp" file and move it to /data.
