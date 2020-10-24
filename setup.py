@@ -2,7 +2,7 @@ import pathlib
 from setuptools import setup
 
 # The directory containing this file
-HERE = pathlib.Path(_file_).parent
+HERE = pathlib.Path(__file__).parent
 
 # The text of the README file
 README = (HERE / "README.md").read_text()
@@ -24,7 +24,7 @@ setup(
         "Programming Language :: Python :: 3.8",
     ],
     packages=["evxtb"],
-    include_package_data=False,
-    install_requires=["xtb", "ase", "matplotlib", "numpy"],
+    include_package_data=True,
+    install_requires=["ase", "matplotlib", "numpy"],
 )
 
