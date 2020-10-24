@@ -1,3 +1,30 @@
-from setuptools import setup, find_packages
+import pathlib
+from setuptools import setup
 
-setup(name="evxtb", packages=find_packages())
+# The directory containing this file
+HERE = pathlib.Path(__file__).parent
+
+# The text of the README file
+README = (HERE / "README.md").read_text()
+
+# This call to setup() does all the work
+setup(
+    name="tightev",
+    version="1.0.0",
+    description="Plot energy volume curves with xTB",
+    long_description=README,
+    long_description_content_type="text/markdown",
+    url="https://github.com/egh17/evxtb",
+    author="Ethan Houchen",
+    author_email="egt.houchen@gmail.com",
+    license="MIT",
+    classifiers=[
+        "License :: OSI Approved :: MIT License",
+        "Programming Language :: Python :: 3",
+        "Programming Language :: Python :: 3.8",
+    ],
+    packages=["evxtb"],
+    include_package_data=True,
+    install_requires=["ase", "matplotlib", "numpy"],
+)
+

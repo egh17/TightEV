@@ -89,9 +89,12 @@ def run_xtb(fname):
         xtb results (str): The xtb code output.
 
     """
-    res = subprocess.run(["xtb", "--gfn", "0", fname], capture_output=True, text=True)
+    res = subprocess.run(
+        ["cd", str(Path(__file__)), "&&", "xtb", "--gfn", "0", fname],
+        capture_output=True,
+        text=True,
+    )
     return res.stdout
-    
 
 
 def run_xtb_opt(fname):
@@ -101,7 +104,18 @@ def run_xtb_opt(fname):
         fname (str): The input atomic coordinate file.
     """
     subprocess.run(
-        ["xtb", "--gfn", "0", fname, "-o", "--cycles", "1000"],
+        [
+            "cd",
+            str(Path(__file__)),
+            "&&",
+            "xtb",
+            "--gfn",
+            "0",
+            fname,
+            "-o",
+            "--cycles",
+            "1000",
+        ],
         capture_output=True,
         text=True,
     )
